@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "358289377382",
+    "firebase_url": "https://room-monitoring-d1a4f-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "room-monitoring-d1a4f",
+    "storage_bucket": "room-monitoring-d1a4f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:358289377382:android:b4f57f38aa7520b978c5a7",
+        "android_client_info": {
+          "package_name": "com.example.monitoring_iot"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5H-max3ZPP1YcayPxWDzGnQADY2YZtvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:358289377382:android:01859b8cedd84cf678c5a7",
+        "android_client_info": {
+          "package_name": "com.example.smart_bedroom_monitor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5H-max3ZPP1YcayPxWDzGnQADY2YZtvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

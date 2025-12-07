@@ -1,0 +1,16 @@
+# Folder Sampah Build (JANGAN DIHAPUS DARI LIST INI)
+/build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+
+# Android
+/android/.gradle/
+/android/app/build/
+/android/local.properties
+*.iml
+
+# VS Code
+.vscode/
