@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'app_theme.dart';
-import 'sensor_card.dart';
-import 'history_sheet.dart';
-import 'my_drawer.dart';
+import '../core/app_theme.dart';
+import '../widgets/sensor_card.dart';
+import '../widgets/history_sheet.dart';
+import '../widgets/my_drawer.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -16,12 +16,20 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage>
     with SingleTickerProviderStateMixin {
+  // Referensi Sensor (Read Only)
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
     'home/room1/sensors',
   );
+
+  // Referensi Kontrol Manual (Read & Write)
+  final DatabaseReference _controlRef = FirebaseDatabase.instance.ref(
+    'home/room1/control',
+  );
+
   final DatabaseReference _logRef = FirebaseDatabase.instance.ref(
     'home/room1/logs',
   );
+
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   List<FlSpot> suhuSpots = [];
@@ -29,16 +37,41 @@ class _DashboardPageState extends State<DashboardPage>
   late AnimationController _alertController;
   String _lastStatus = "AMAN";
 
+  // State untuk tombol Manual
+  bool _isManualFanOn = false;
+
+  // STATE KONEKSI INTERNET/SERVER
+  bool _isAppConnected = false;
+
   @override
   void initState() {
     super.initState();
     _dbRef.keepSynced(true);
+    _controlRef.keepSynced(true);
+
     _alertController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
       lowerBound: 0.9,
       upperBound: 1.1,
     )..repeat(reverse: true);
+
+    // 1. Listener Tombol Kipas
+    _controlRef.child('fan').onValue.listen((event) {
+      if (event.snapshot.value != null) {
+        setState(() {
+          _isManualFanOn = event.snapshot.value == true;
+        });
+      }
+    });
+
+    // LISTENER KONEKSI REAL-TIME
+    // .info/connected adalah path spesial Firebase untuk cek koneksi device ke server
+    FirebaseDatabase.instance.ref(".info/connected").onValue.listen((event) {
+      setState(() {
+        _isAppConnected = (event.snapshot.value ?? false) == true;
+      });
+    });
   }
 
   @override
@@ -58,13 +91,17 @@ class _DashboardPageState extends State<DashboardPage>
     });
   }
 
+  // Fungsi mengubah state kipas manual
+  void _toggleFan(bool value) {
+    _controlRef.update({'fan': value});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.background,
       drawer: const MyDrawer(activeIndex: 0),
-
       body: StreamBuilder(
         stream: _dbRef.onValue,
         builder: (context, snapshot) {
@@ -72,6 +109,8 @@ class _DashboardPageState extends State<DashboardPage>
           var kelembapan = 0;
           var gas = 0;
           String status = "Menghubungkan...";
+          String kipasStatusReal = "MATI";
+          String kipasMode = "MANUAL";
           bool isSafe = true;
 
           if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
@@ -79,10 +118,13 @@ class _DashboardPageState extends State<DashboardPage>
               final data = Map<dynamic, dynamic>.from(
                 snapshot.data!.snapshot.value as Map,
               );
+
               suhu = double.parse(data['suhu'].toString());
               kelembapan = data['kelembapan'] ?? 0;
               gas = data['gas'] ?? 0;
               status = data['status'] ?? "AMAN";
+              kipasStatusReal = data['kipas_status'] ?? "MATI";
+              kipasMode = data['kipas_mode'] ?? "MANUAL";
 
               isSafe =
                   !status.contains("ASAP") &&
@@ -96,19 +138,24 @@ class _DashboardPageState extends State<DashboardPage>
                   "Suhu: $suhu°C | Gas: $gas",
                 );
               }
+
               _lastStatus = isSafe ? "AMAN" : "BAHAYA";
 
-              // Update Grafik
               if (suhuSpots.isEmpty || suhuSpots.last.y != suhu) {
                 suhuSpots.add(FlSpot(xValue, suhu));
                 xValue++;
-                if (suhuSpots.length > 20)
-                  suhuSpots.removeAt(0); // Menampilkan 20 titik terakhir
+                if (suhuSpots.length > 20) {
+                  suhuSpots.removeAt(0);
+                }
               }
             } catch (e) {
-              print("Error: $e");
+              print("Error parsing data: $e");
             }
           }
+
+          // Logika Kipas
+          bool isAutoModeActive = suhu >= 35.0;
+          bool switchValue = isAutoModeActive ? true : _isManualFanOn;
 
           return Stack(
             children: [
@@ -140,7 +187,8 @@ class _DashboardPageState extends State<DashboardPage>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   children: [
                     const SizedBox(height: 10),
-                    // HEADER
+
+                    // HEADER NAV DENGAN INDIKATOR ONLINE/OFFLINE
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -158,14 +206,54 @@ class _DashboardPageState extends State<DashboardPage>
                                 _scaffoldKey.currentState?.openDrawer(),
                           ),
                         ),
-                        Text(
-                          "Smart Monitoring",
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
+
+                        // --- [PERUBAHAN UI] INDIKATOR ONLINE/OFFLINE ---
+                        Column(
+                          children: [
+                            Text(
+                              "Smart Monitoring",
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // Badge Status Koneksi
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.circle,
+                                    size: 8,
+                                    // Hijau jika Connect, Merah jika Disconnect
+                                    color: _isAppConnected
+                                        ? Colors.greenAccent
+                                        : Colors.redAccent,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    _isAppConnected ? "Online" : "Offline",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
+
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
@@ -190,7 +278,8 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
 
                     const SizedBox(height: 20),
-                    // STATUS UTAMA
+
+                    // STATUS UTAMA (LINGKARAN)
                     Center(
                       child: Column(
                         children: [
@@ -249,9 +338,96 @@ class _DashboardPageState extends State<DashboardPage>
                       ),
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 30),
 
-                    // --- GRID SENSOR (PERBAIKAN LOGIKA MERAH) ---
+                    // --- PANEL KONTROL KIPAS ---
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.shadowColor,
+                            blurRadius: 20,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: switchValue
+                                  ? (isAutoModeActive
+                                        ? Colors.orange.withOpacity(0.1)
+                                        : Colors.blue.withOpacity(0.1))
+                                  : Colors.grey.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.wind_power_rounded,
+                              color: switchValue
+                                  ? (isAutoModeActive
+                                        ? Colors.orange
+                                        : Colors.blue[700])
+                                  : Colors.grey,
+                              size: 30,
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Kontrol Kipas",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  isAutoModeActive
+                                      ? "Mode Otomatis (>30°C)"
+                                      : "Status: $kipasStatusReal",
+                                  style: TextStyle(
+                                    color: isAutoModeActive
+                                        ? Colors.orange
+                                        : Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // SWITCH ON/OFF
+                          Transform.scale(
+                            scale: 0.8,
+                            child: Switch(
+                              value: switchValue,
+                              activeColor: isAutoModeActive
+                                  ? Colors.orange
+                                  : Colors.blue,
+                              activeTrackColor: isAutoModeActive
+                                  ? Colors.orange[200]
+                                  : Colors.blue[200],
+                              inactiveThumbColor: Colors.grey,
+                              inactiveTrackColor: Colors.grey[300],
+
+                              onChanged: isAutoModeActive
+                                  ? null
+                                  : (val) => _toggleFan(val),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // --- GRID SENSOR ---
                     LayoutBuilder(
                       builder: (context, constraints) {
                         int gridCols = constraints.maxWidth > 600 ? 4 : 2;
@@ -262,52 +438,39 @@ class _DashboardPageState extends State<DashboardPage>
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           childAspectRatio: 1.1,
-                          // ... di dalam GridView.count ...
                           children: [
-                            // --- KARTU 1: TEMPERATUR ---
                             SensorCard(
                               title: "Temperatur",
                               value: "$suhu",
                               unit: "°C",
                               icon: Icons.thermostat_rounded,
                               color: Colors.orange,
-                              // LOGIKA BAHAYA: Jika Suhu > 35 ATAU Status mengandung kata "PANAS"
-                              // Maka kartu akan berubah jadi MERAH SOLID
-                              isDanger: suhu > 35 || status.contains("PANAS"),
+                              isDanger: status.contains("PANAS"),
                             ),
-
-                            // --- KARTU 2: KELEMBAPAN ---
                             SensorCard(
                               title: "Kelembapan",
                               value: "$kelembapan",
                               unit: "%",
                               icon: Icons.water_drop_rounded,
                               color: Colors.blue,
-                              isDanger:
-                                  false, // Kelembapan jarang bahaya, jadi false aja
+                              isDanger: false,
                             ),
-
-                            // --- KARTU 3: GAS ---
                             SensorCard(
                               title: "Gas Level",
                               value: "$gas",
                               unit: "PPM",
                               icon: Icons.cloud_circle_rounded,
                               color: Colors.purple,
-                              // LOGIKA BAHAYA: Jika Gas > 200 ATAU Status mengandung kata "ASAP/BAHAYA"
-                              isDanger:
-                                  gas > 200 ||
-                                  status.contains("ASAP") ||
-                                  status.contains("BAHAYA"),
+                              isDanger: gas > 200 || status.contains("ASAP"),
                             ),
-
-                            // --- KARTU 4: SISTEM ---
                             SensorCard(
-                              title: "Status Sistem",
-                              value: snapshot.hasData ? "Online" : "...",
+                              title: "Status Kipas",
+                              value: kipasStatusReal,
                               unit: "",
-                              icon: Icons.wifi_tethering,
-                              color: Colors.green,
+                              icon: Icons.cyclone_rounded,
+                              color: kipasStatusReal == "NYALA"
+                                  ? Colors.green
+                                  : Colors.grey,
                             ),
                           ],
                         );
@@ -316,7 +479,7 @@ class _DashboardPageState extends State<DashboardPage>
 
                     const SizedBox(height: 25),
 
-                    // --- GRAFIK (PERBAIKAN: AGAR TIDAK KELUAR GARIS) ---
+                    // --- GRAFIK ---
                     Container(
                       height: 350,
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
@@ -353,14 +516,11 @@ class _DashboardPageState extends State<DashboardPage>
                                   )
                                 : LineChart(
                                     LineChartData(
-                                      // KUNCI UTAMA: clipData mencegah garis keluar kotak
                                       clipData: const FlClipData.all(),
-
                                       gridData: FlGridData(
                                         show: true,
                                         drawVerticalLine: false,
-                                        horizontalInterval:
-                                            10, // Garis bantu tiap 10 derajat
+                                        horizontalInterval: 10,
                                         getDrawingHorizontalLine: (value) =>
                                             FlLine(
                                               color: Colors.grey[200],
@@ -383,15 +543,14 @@ class _DashboardPageState extends State<DashboardPage>
                                           sideTitles: SideTitles(
                                             showTitles: true,
                                             reservedSize: 35,
-                                            getTitlesWidget: (value, meta) {
-                                              return Text(
-                                                value.toInt().toString(),
-                                                style: const TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.grey,
+                                            getTitlesWidget: (value, meta) =>
+                                                Text(
+                                                  value.toInt().toString(),
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey,
+                                                  ),
                                                 ),
-                                              );
-                                            },
                                           ),
                                         ),
                                         bottomTitles: const AxisTitles(
@@ -410,9 +569,7 @@ class _DashboardPageState extends State<DashboardPage>
                                               : Colors.red,
                                           barWidth: 3,
                                           isStrokeCapRound: true,
-                                          dotData: const FlDotData(
-                                            show: true,
-                                          ), // Menampilkan Titik
+                                          dotData: const FlDotData(show: true),
                                           belowBarData: BarAreaData(
                                             show: true,
                                             color:
@@ -423,8 +580,6 @@ class _DashboardPageState extends State<DashboardPage>
                                           ),
                                         ),
                                       ],
-                                      // BATASI RANGE (Agar grafik tidak loncat-loncat)
-                                      // Misal: Suhu ruangan umumnya 20 - 50 derajat.
                                       minY: 20,
                                       maxY: 60,
                                     ),

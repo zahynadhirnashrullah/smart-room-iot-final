@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'my_drawer.dart'; // <--- Import Drawer Baru
+// Import Drawer dari folder widget
+import '../../widgets/my_drawer.dart';
 
 class GuidePage extends StatelessWidget {
   const GuidePage({super.key});
@@ -21,7 +22,6 @@ class GuidePage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        // Icon Menu akan otomatis muncul (Garis Tiga) karena ada drawer di atas
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: ListView(
@@ -62,8 +62,9 @@ class GuidePage extends StatelessWidget {
                   "Kelompok IoT Monitoring",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
+                // === [DIUBAH] ===
                 const Text(
-                  "D3 Teknologi Informasi - Politeknik Negeri Madiun",
+                  "D3 Teknologi Informasi - Smart Room",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),

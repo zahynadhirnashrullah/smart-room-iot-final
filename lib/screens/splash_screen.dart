@@ -1,6 +1,6 @@
-import 'dart:async'; // Untuk Timer waktu tunggu
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'dashboard_screen.dart'; // Pastikan ini sesuai nama file dashboard kamu
+import 'dashboard_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -41,8 +41,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     // 2. Timer Pindah Halaman (3 Detik total waktu tunggu)
-    Timer(const Duration(seconds: 4), () {
-      // Pindah ke Dashboard dan hapus Splash Screen dari memori (agar tidak bisa di-back)
+    Timer(const Duration(seconds: 1), () {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DashboardPage()),
@@ -148,11 +147,12 @@ class _SplashScreenState extends State<SplashScreen>
 
             // IDENTITAS KELOMPOK (FOOTER)
             const Text(
-              "Developed by Kelompok 3", // GANTI NAMA KELOMPOK DI SINI
+              "Developed by Kelompok 3",
               style: TextStyle(color: Colors.white54, fontSize: 12),
             ),
+            // === [DIUBAH] ===
             const Text(
-              "Politeknik Negeri Madiun",
+              "Smart Room",
               style: TextStyle(
                 color: Colors.white54,
                 fontSize: 12,

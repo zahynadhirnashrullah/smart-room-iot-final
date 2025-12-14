@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dashboard_screen.dart';
-import 'guide_screen.dart';
+// Import mengarah ke folder screens
+import '../../screens/dashboard_screen.dart';
+import '../../screens/guide_screen.dart';
 
 class MyDrawer extends StatelessWidget {
   final int activeIndex; // 0 = Dashboard, 1 = Panduan
@@ -25,7 +26,8 @@ class MyDrawer extends StatelessWidget {
               "Tim Monitoring IoT",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
-            accountEmail: const Text("Politeknik Negeri Madiun"),
+
+            accountEmail: const Text("Smart Room"),
             currentAccountPicture: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -80,19 +82,17 @@ class MyDrawer extends StatelessWidget {
     required IconData icon,
     required Widget targetPage,
   }) {
-    bool isActive = index == activeIndex; // Cek apakah menu ini sedang aktif
+    bool isActive = index == activeIndex;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        // JIKA AKTIF: Warna Biru Muda. JIKA TIDAK: Transparan.
         color: isActive ? const Color(0xFFE3F2FD) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
         leading: Icon(
           icon,
-          // JIKA AKTIF: Icon Biru. JIKA TIDAK: Icon Abu.
           color: isActive ? const Color(0xFF1E88E5) : Colors.grey[700],
         ),
         title: Text(
@@ -103,14 +103,10 @@ class MyDrawer extends StatelessWidget {
           ),
         ),
         onTap: () {
-          // Logika Navigasi PINTAR
           if (isActive) {
-            Navigator.pop(
-              context,
-            ); // Jika klik halaman sendiri, tutup drawer aja
+            Navigator.pop(context);
           } else {
-            Navigator.pop(context); // Tutup drawer dulu
-            // Gunakan pushReplacement agar tidak ada tombol BACK, tapi tombol MENU tetap ada
+            Navigator.pop(context);
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => targetPage),

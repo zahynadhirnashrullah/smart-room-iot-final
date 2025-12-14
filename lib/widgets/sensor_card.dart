@@ -13,7 +13,7 @@ class SensorCard extends StatelessWidget {
     required this.unit,
     required this.icon,
     required this.color,
-    this.isDanger = false, // Default tidak bahaya
+    this.isDanger = false,
   });
 
   @override
@@ -45,7 +45,10 @@ class SensorCard extends StatelessWidget {
         ],
         // Border merah tua jika bahaya agar makin menyala
         border: isDanger
-            ? Border.all(color: const Color(0xFFB71C1C), width: 2)
+            ? Border.all(
+                color: const Color.fromARGB(216, 183, 28, 28),
+                width: 2,
+              )
             : null,
       ),
       child: Stack(
@@ -81,7 +84,7 @@ class SensorCard extends StatelessWidget {
 
                 const Spacer(),
 
-                // Judul Sensor (Misal: Temperatur)
+                // Judul Sensor (Temperatur)
                 Text(
                   title,
                   style: TextStyle(
@@ -92,14 +95,13 @@ class SensorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
 
-                // Angka Nilai (Misal: 40.5)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       value,
                       style: TextStyle(
-                        fontSize: 26, // Diperbesar sedikit
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                         color: mainTextColor,
                       ),
